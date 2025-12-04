@@ -9,4 +9,8 @@ devenv.local.yaml
 # pre-commit
 .pre-commit-config.yaml
 
+# AoC input files, to honor creator's wish to not publish
 */inputs/*.txt
+
+# dotenv for local secrets
+.env
