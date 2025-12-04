@@ -1,15 +1,30 @@
-{ pkgs, lib, config, inputs, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  inputs,
+  ...
+}:
 
 {
   # https://devenv.sh/basics/
   env.GREET = "devenv";
 
   # https://devenv.sh/packages/
-  packages = [ pkgs.git pkgs.fontconfig pkgs.cairo pkgs.libjpeg pkgs.glib pkgs.pango pkgs.gtk2-x11 ];
+  packages = [
+    pkgs.git
+    pkgs.fontconfig
+    pkgs.cairo
+    pkgs.libjpeg
+    pkgs.glib
+    pkgs.pango
+    pkgs.gtk2-x11
+  ];
 
   # https://devenv.sh/languages/
   # languages.rust.enable = true;
   languages.racket.enable = true;
+  dotenv.enable = true;
 
   # https://devenv.sh/processes/
   # processes.dev.exec = "${lib.getExe pkgs.watchexec} -n -- ls -la";

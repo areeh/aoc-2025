@@ -126,7 +126,8 @@
 
 (module+ main
   (define session-cookie (get-env-var "AOC_SESSION"))
-  (define-values (year day) (get-current-day-and-year))
+  (define-values (year last-day) (get-current-day-and-year))
 
-  (printf "Setting up Advent of Code ~a Day ~a\n" year day)
-  (setup-day year day session-cookie))
+  (printf "Setting up Advent of Code ~a Days 1-~a\n" year last-day)
+  (for ([day (in-range 1 (add1 last-day))])
+    (setup-day year day session-cookie)))
