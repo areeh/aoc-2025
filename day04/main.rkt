@@ -1,7 +1,7 @@
 #lang racket
 
 (require math/array
-         "../grid-helpers.rkt")
+         "../grid_helpers.rkt")
 
 (define (int->char n)
   (case n
