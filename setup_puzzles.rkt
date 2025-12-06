@@ -41,7 +41,8 @@
     (http-sendrecv "adventofcode.com"
                    path
                    #:ssl? #t
-                   #:headers (list (format "Cookie: session=~a" session-cookie))))
+                   #:headers (list (format "Cookie: session=~a" session-cookie)
+                                   "User-Agent: https://github.com/areeh/aoc-2025")))
   (port->string in))
 
 (define (fetch-puzzle-description year day session-cookie)
@@ -51,7 +52,8 @@
     (http-sendrecv "adventofcode.com"
                    path
                    #:ssl? #t
-                   #:headers (list (format "Cookie: session=~a" session-cookie))))
+                   #:headers (list (format "Cookie: session=~a" session-cookie)
+                                   "User-Agent: https://github.com/areeh/aoc-2025")))
   (port->string in))
 
 (define (extract-code-snippets html-str)
