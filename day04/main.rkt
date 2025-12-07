@@ -9,11 +9,11 @@
     [(1) #\@]
     [else (error 'int->char "expected 0 or 1, got ~a" n)]))
 
-(define (char->int c)
-  (match c
+(define (char->int ch)
+  (match ch
     [#\. 0]
     [#\@ 1]
-    [_ (error 'char->int "expected . or @ , got ~a" c)]))
+    [_ (error 'char->int "expected . or @ , got ~a" ch)]))
 
 (define (accessible-rolls arr)
   (let* ([padded (pad-n arr 1 0)]
@@ -24,8 +24,8 @@
                                     #:default-val 9)])
     (array-map (λ (n) (if (< n 4) 1 0)) counts)))
 
-(define (char->int-array2d s)
-  (string->int-array2d/mapping s char->int))
+(define (char->int-array2d str)
+  (string->int-array2d/mapping str char->int))
 
 (define (parse-input path)
   (char->int-array2d (file->string path)))

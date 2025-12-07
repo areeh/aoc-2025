@@ -156,10 +156,10 @@
       (integer->char (+ n (char->integer #\0)))
       (error 'integer->digit "expected single digit 0-9, got ~a" n)))
 
-(define (digit->integer c)
-  (if (char-numeric? c)
-      (- (char->integer c) (char->integer #\0))
-      (error 'digit->integer "expected digit character, got ~a" c)))
+(define (digit->integer ch)
+  (if (char-numeric? ch)
+      (- (char->integer ch) (char->integer #\0))
+      (error 'digit->integer "expected digit character, got ~a" ch)))
 
 (define (overlay-where base-arr mask-arr overlay-val [mask-test (λ (v) (= v 1))])
   (define base-shape (array-shape base-arr))
@@ -168,16 +168,16 @@
     (error 'overlay-where "shape mismatch: base ~a, mask ~a" base-shape mask-shape))
   (array-map (λ (base mask) (if (mask-test mask) overlay-val base)) base-arr mask-arr))
 
-(define (strip-leading-newline s)
-  (if (and (> (string-length s) 0) (char=? (string-ref s 0) #\newline))
-      (substring s 1)
-      s))
+(define (strip-leading-newline str)
+  (if (and (> (string-length str) 0) (char=? (string-ref str 0) #\newline))
+      (substring str 1)
+      str))
 
-(define (strip-common-indent s)
-  (define lines (string-split s "\n"))
+(define (strip-common-indent str)
+  (define lines (string-split str "\n"))
   (define non-empty-lines (filter (λ (line) (> (string-length (string-trim line)) 0)) lines))
   (if (null? non-empty-lines)
-      s
+      str
       (let* ([indents (map (λ (line)
                              (- (string-length line)
                                 (string-length (string-trim line #:left? #t #:right? #f))))
@@ -190,8 +190,8 @@
                           lines)
                      "\n"))))
 
-(define (normalize-grid-lines s)
-  (define lines (string-split s "\n"))
+(define (normalize-grid-lines str)
+  (define lines (string-split str "\n"))
   (match (reverse lines)
     ['() '()]
     [(cons head tail)
@@ -199,8 +199,8 @@
          (reverse tail)
          lines)]))
 
-(define (string->char-array2d s)
-  (define stripped (strip-leading-newline s))
+(define (string->char-array2d str)
+  (define stripped (strip-leading-newline str))
   (define dedented (strip-common-indent stripped))
   (define lines (normalize-grid-lines dedented))
   (when (null? lines)
@@ -215,20 +215,20 @@
                  (match-define (vector row col) index)
                  (string-ref (vector-ref line-vec row) col))))
 
-(define (string->int-array2d/mapping s char->int)
-  (define char-arr (string->char-array2d s))
-  (array-map (λ (c)
-               (define result (char->int c))
+(define (string->int-array2d/mapping str char->int)
+  (define char-arr (string->char-array2d str))
+  (array-map (λ (ch)
+               (define result (char->int ch))
                (unless (integer? result)
                  (error 'string->int-array2d/mapping
                         "mapping for character ~v returned non-integer: ~v"
-                        c
+                        ch
                         result))
                result)
              char-arr))
 
-(define (string->int-array2d s)
-  (string->int-array2d/mapping s digit->integer))
+(define (string->int-array2d str)
+  (string->int-array2d/mapping str digit->integer))
 
 (define (char-array2d->string arr #:elem->char [elem->char #f])
   (match-define (vector rows cols) (array-shape arr))

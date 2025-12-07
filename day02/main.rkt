@@ -24,17 +24,17 @@
 (define (part1 input)
   (sum-line input invalid?))
 
-(define (repeats-prefix? s prefix-len)
-  (define n (string-length s))
+(define (repeats-prefix? str prefix-len)
+  (define n (string-length str))
   (and (>= (quotient n prefix-len) 2)
        (zero? (remainder n prefix-len))
        (for/and ([i [in-range prefix-len n]])
-         (char=? (string-ref s i) (string-ref s (remainder i prefix-len))))))
+         (char=? (string-ref str i) (string-ref str (remainder i prefix-len))))))
 
-(define (any-prefix-repeats? s)
-  (define n (string-length s))
+(define (any-prefix-repeats? str)
+  (define n (string-length str))
   (for/or ([prefix-len (in-range 1 n)])
-    (repeats-prefix? s prefix-len)))
+    (repeats-prefix? str prefix-len)))
 
 (define (part2 input)
   (sum-line input any-prefix-repeats?))
