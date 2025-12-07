@@ -103,15 +103,11 @@
       (check-equal? (binary-search-by 500 vec number-cmp) 250)))
 
   (test-case "binary-search-by: large vector - not found"
-    (let ([vec (list->vector (range 0 1000 2))])
-      (check-false (binary-search-by 501 vec number-cmp))))
+    (let ([vec (list->vector (range 0 1000 2))]) (check-false (binary-search-by 501 vec number-cmp))))
 
   ;; Tests for error handling
   (test-case "binary-search-by: invalid sequence type"
-    (check-exn exn:fail?
-               (lambda () (binary-search-by 5 "not a sequence" number-cmp))))
+    (check-exn exn:fail? (λ () (binary-search-by 5 "not a sequence" number-cmp))))
 
   (test-case "binary-search-by: invalid comparison return value"
-    (check-exn exn:fail?
-               (lambda () (binary-search-by 5 #(1 3 5 7 9)
-                                            (lambda (a b) 'invalid))))))
+    (check-exn exn:fail? (λ () (binary-search-by 5 #(1 3 5 7 9) (λ (a b) 'invalid))))))

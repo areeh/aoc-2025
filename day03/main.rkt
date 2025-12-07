@@ -1,11 +1,11 @@
 #lang racket
 
 (define (file->digit-lines path)
-  (for/list ([line (in-lines (open-input-file path))])
-    (unless (regexp-match? #px"^[0-9]+$" line)
-      (error 'file->digit-lines "line contains non-digit characters: ~a" line))
-    (for/list ([ch (in-string line)])
-      (- (char->integer ch) (char->integer #\0)))))
+  (map (λ (line)
+         (unless (regexp-match? #px"^[0-9]+$" line)
+           (error 'file->digit-lines "line contains non-digit characters: ~a" line))
+         (map (λ (ch) (- (char->integer ch) (char->integer #\0))) (string->list line)))
+       (file->lines path)))
 
 (define (parse-input path)
   (file->digit-lines path))

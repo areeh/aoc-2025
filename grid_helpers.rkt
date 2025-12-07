@@ -138,9 +138,11 @@
       (let ([start (+ pad delta)]) (:: start (+ start inner-len))))
 
     (define slice-specs
-      (for/list ([offset offsets])
-        (match-define (list drow dcol) offset)
-        (list (make-axis-slice pad-top inner-rows drow) (make-axis-slice pad-left inner-cols dcol))))
+      (map (match-lambda
+             [(list drow dcol)
+              (list (make-axis-slice pad-top inner-rows drow)
+                    (make-axis-slice pad-left inner-cols dcol))])
+           offsets))
 
     (define neighbor-layers (map (λ (spec) (array-slice-ref data spec)) slice-specs))
 

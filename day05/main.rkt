@@ -40,7 +40,7 @@
 (struct id-range-set (ranges) #:transparent)
 
 (define (normalize-ranges rs)
-  (define sorted (sort (filter (lambda (r) (not (id-range-empty? r))) rs) < #:key id-range-lo))
+  (define sorted (sort (filter (λ (r) (not (id-range-empty? r))) rs) < #:key id-range-lo))
   (cond
     [(empty? sorted) '()]
     [else
@@ -65,13 +65,13 @@
   (number? (binary-search-by x (id-range-set-ranges range-set) cmp)))
 
 (define (string->integers str)
-  (for/list ([line (string->lines str)])
-    (string->number line)))
+  (map string->number (string->lines str)))
 
 (define (string->id-ranges str)
-  (for/list ([line (string->lines str)])
-    (define parts (string-split line "-"))
-    (make-id-range (string->number (first parts)) (add1 (string->number (second parts))))))
+  (map (λ (line)
+         (match (string-split line "-")
+           [(list lo hi) (make-id-range (string->number lo) (add1 (string->number hi)))]))
+       (string->lines str)))
 
 (define (string->id-range-set str)
   (apply make-id-range-set (string->id-ranges str)))
@@ -81,7 +81,7 @@
 
 (define (part1 input)
   (match input
-    [(list range-set ids) (for/sum ([x ids] #:when (id-range-set-contains? x range-set)) 1)]))
+    [(list range-set ids) (count (λ (x) (id-range-set-contains? x range-set)) ids)]))
 
 (define (part2 input)
   (match input
@@ -91,7 +91,7 @@
   (require rackunit)
 
   ;; make-id-range edge cases
-  (check-exn exn:fail? (lambda () (make-id-range 10 1)))
+  (check-exn exn:fail? (λ () (make-id-range 10 1)))
   (check-equal? (id-range-empty? (make-id-range 5 5)) #t)
 
   ;; contains? boundary tests
@@ -133,8 +133,9 @@
   (check-equal? (id-range-set-contains? 7
                                         (make-id-range-set (make-id-range 1 5) (make-id-range 10 15)))
                 #f)
-  (check-equal? (id-range-set-contains? 12
-                                        (make-id-range-set (make-id-range 1 5) (make-id-range 10 15) (make-id-range 20 25)))
+  (check-equal? (id-range-set-contains?
+                 12
+                 (make-id-range-set (make-id-range 1 5) (make-id-range 10 15) (make-id-range 20 25)))
                 #t)
 
   ;; Example input tests

@@ -31,8 +31,7 @@
 
 (define (get-env-var name)
   "Get environment variable or error"
-  (or (getenv name)
-      (error (format "Environment variable ~a not set" name))))
+  (or (getenv name) (error (format "Environment variable ~a not set" name))))
 
 (define (fetch-aoc-input year day session-cookie)
   "Fetch puzzle input from AoC"
@@ -91,13 +90,12 @@
   (unless (file-exists? input-file)
     (printf "Fetching input.txt...\n")
     (define input-content (fetch-aoc-input year day session-cookie))
-    (call-with-output-file input-file
-      (lambda (out) (display input-content out)))
+    (call-with-output-file input-file (λ (out) (display input-content out)))
     (printf "Created ~a/inputs/input.txt\n" day-str))
 
   ;; Check if any example files exist
   (define existing-examples
-    (filter (lambda (f)
+    (filter (λ (f)
               (and (string-prefix? (path->string (file-name-from-path f)) "example")
                    (string-suffix? (path->string (file-name-from-path f)) ".txt")))
             (if (directory-exists? inputs-dir)
@@ -116,12 +114,12 @@
     ;; Create example files for each snippet
     (for ([snippet snippets]
           [i (in-naturals)])
-      (define filename (if (= i 0)
-                           "example.txt"
-                           (format "example~a.txt" i)))
+      (define filename
+        (if (= i 0)
+            "example.txt"
+            (format "example~a.txt" i)))
       (define example-file (build-path inputs-dir filename))
-      (call-with-output-file example-file
-        (lambda (out) (display snippet out)))
+      (call-with-output-file example-file (λ (out) (display snippet out)))
       (printf "Created ~a/inputs/~a\n" day-str filename)))
 
   (printf "\nDay ~a setup complete!\n" day))
