@@ -28,8 +28,9 @@
 
   (cons left (if (> last-elem right) last-elem right)))
 
-(define (2-digits->integer p)
-  (+ (* (car p) 10) (cdr p)))
+(define (2-digits->integer pair)
+  (match pair
+    [(cons tens ones) (+ (* tens 10) ones)]))
 
 (define (best-jolts xs)
   (2-digits->integer (top-sequence-2 xs)))
@@ -38,15 +39,14 @@
   (for/sum ([xs digit-sequences]) (best-jolts xs)))
 
 (define (index-max xs)
-  (define-values (i-mx _mx)
-    (for/fold ([i-mx -1]
-               [mx 0])
-              ([v xs]
-               [i (in-naturals)])
-      (if (> v mx)
-          (values i v)
-          (values i-mx mx))))
-  i-mx)
+  (for/fold ([i-mx -1]
+             [mx 0]
+             #:result i-mx)
+            ([v xs]
+             [i (in-naturals)])
+    (if (> v mx)
+        (values i v)
+        (values i-mx mx))))
 
 (define (lexicographic-max-subsequence xs k)
   (define (loop xs k)

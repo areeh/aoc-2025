@@ -3,20 +3,20 @@
 (provide string->lines
          process-paragraphs)
 
-(define (string->lines s)
-  (regexp-split #px"\r\n?|\n" s))
+(define (string->lines str)
+  (regexp-split #px"\r\n?|\n" str))
 
-(define (normalize-newlines s)
+(define (normalize-newlines str)
   ;; \r\n -> \n,  \r -> \n
-  (regexp-replace* #px"\r\n?" s "\n"))
+  (regexp-replace* #px"\r\n?" str "\n"))
 
-(define (split-paragraphs s)
+(define (split-paragraphs str)
   ;; paragraphs separated by one or more blank lines
-  (regexp-split #rx"\n[ \t]*\n" (normalize-newlines s)))
+  (regexp-split #rx"\n[ \t]*\n" (normalize-newlines str)))
 
 (define (process-paragraphs text . fs)
-  (define ps (split-paragraphs text))
-  (unless (= (length ps) (length fs))
-    (error 'process-paragraphs "expected ~a paragraphs, got ~a" (length fs) (length ps)))
+  (define paras (split-paragraphs text))
+  (unless (= (length paras) (length fs))
+    (error 'process-paragraphs "expected ~a paragraphs, got ~a" (length fs) (length paras)))
   ;; map is variadic: (map f xs ys) zips
-  (map (λ (p f) (f p)) ps fs))
+  (map (λ (para fn) (fn para)) paras fs))

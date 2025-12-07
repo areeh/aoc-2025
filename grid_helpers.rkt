@@ -31,11 +31,10 @@
 (struct padded2d (data pad-top pad-bottom pad-left pad-right) #:transparent)
 
 ;; Helper: extract all dimension info at once
-(define-values (padded2d-dims)
-  (λ (p)
-    (match-define (padded2d data pad-top pad-bottom pad-left pad-right) p)
-    (match-define (vector total-rows total-cols) (array-shape data))
-    (values total-rows total-cols pad-top pad-bottom pad-left pad-right)))
+(define (padded2d-dims padded)
+  (match-define (padded2d data pad-top pad-bottom pad-left pad-right) padded)
+  (match-define (vector total-rows total-cols) (array-shape data))
+  (values total-rows total-cols pad-top pad-bottom pad-left pad-right))
 
 ;; Helper: convert inner index to outer index
 (define (inner->outer-index inner-idx pad-top pad-left)
@@ -43,87 +42,83 @@
   (vector (+ pad-top inner-row) (+ pad-left inner-col)))
 
 ;; Helper: get cell at inner index
-(define (padded2d-inner-ref p inner-idx)
-  (array-ref (padded2d-data p)
-             (inner->outer-index inner-idx (padded2d-pad-top p) (padded2d-pad-left p))))
+(define (padded2d-inner-ref padded inner-idx)
+  (array-ref (padded2d-data padded)
+             (inner->outer-index inner-idx (padded2d-pad-top padded) (padded2d-pad-left padded))))
 
-(define (padded2d-inner-shape p)
-  (define-values (total-rows total-cols pad-top pad-bottom pad-left pad-right) (padded2d-dims p))
+(define (padded2d-inner-shape padded)
+  (define-values (total-rows total-cols pad-top pad-bottom pad-left pad-right) (padded2d-dims padded))
   (define inner-rows (- total-rows pad-top pad-bottom))
   (define inner-cols (- total-cols pad-left pad-right))
   (when (or (negative? inner-rows) (negative? inner-cols))
     (error 'padded2d-inner-shape "padding too large for shape ~a" (vector total-rows total-cols)))
   (vector inner-rows inner-cols))
 
-(define (padded2d-inner-slice-spec p)
-  (define-values (total-rows total-cols pad-top pad-bottom pad-left pad-right) (padded2d-dims p))
+(define (padded2d-inner-slice-spec padded)
+  (define-values (total-rows total-cols pad-top pad-bottom pad-left pad-right) (padded2d-dims padded))
   (list (:: pad-top (- total-rows pad-bottom)) (:: pad-left (- total-cols pad-right))))
 
-(define (padded2d-inner-array p)
-  (array-slice-ref (padded2d-data p) (padded2d-inner-slice-spec p)))
+(define (padded2d-inner-array padded)
+  (array-slice-ref (padded2d-data padded) (padded2d-inner-slice-spec padded)))
 
 (define (pad-2d arr pad-top pad-bottom pad-left pad-right [pad-val 0])
-  (let* ([shape (array-shape arr)]
-         [rows (vector-ref shape 0)]
-         [cols (vector-ref shape 1)]
-         [new-rows (+ pad-top rows pad-bottom)]
-         [new-cols (+ pad-left cols pad-right)])
-    (define padded
-      (build-array
-       (vector new-rows new-cols)
-       (λ (index)
-         (let* ([row (vector-ref index 0)]
-                [col (vector-ref index 1)]
-                [inner-row (- row pad-top)]
-                [inner-col (- col pad-left)])
-           (if (and (<= 0 inner-row) (< inner-row rows) (<= 0 inner-col) (< inner-col cols))
-               (array-ref arr (vector inner-row inner-col))
-               pad-val)))))
-    (padded2d padded pad-top pad-bottom pad-left pad-right)))
+  (match-define (vector rows cols) (array-shape arr))
+  (define new-rows (+ pad-top rows pad-bottom))
+  (define new-cols (+ pad-left cols pad-right))
+  (define padded
+    (build-array
+     (vector new-rows new-cols)
+     (λ (index)
+       (match-define (vector row col) index)
+       (define inner-row (- row pad-top))
+       (define inner-col (- col pad-left))
+       (if (and (<= 0 inner-row) (< inner-row rows)
+                (<= 0 inner-col) (< inner-col cols))
+           (array-ref arr (vector inner-row inner-col))
+           pad-val))))
+  (padded2d padded pad-top pad-bottom pad-left pad-right))
 
 (define (pad-n arr n [pad-val 0])
   (pad-2d arr n n n n pad-val))
 
-(define (in-padded2d-inner-indexes p)
-  (in-array-indexes (padded2d-inner-shape p)))
+(define (in-padded2d-inner-indexes padded)
+  (in-array-indexes (padded2d-inner-shape padded)))
 
-(define (padded2d-map-inner/index p transform)
-  (array-map (λ (inner-idx) (transform inner-idx (padded2d-inner-ref p inner-idx)))
-             (indexes-array (padded2d-inner-shape p))))
+(define (padded2d-map-inner/index padded transform)
+  (array-map (λ (inner-idx) (transform inner-idx (padded2d-inner-ref padded inner-idx)))
+             (indexes-array (padded2d-inner-shape padded))))
 
-(define (padded2d-map-inner p transform)
-  (padded2d-map-inner/index p (λ (_inner-index cell) (transform cell))))
+(define (padded2d-map-inner padded transform)
+  (padded2d-map-inner/index padded (λ (_inner-index cell) (transform cell))))
 
-(define (padded2d-fold-inner/index p combine init)
-  (array-fold (λ (inner-idx acc) (combine inner-idx (padded2d-inner-ref p inner-idx) acc))
+(define (padded2d-fold-inner/index padded combine init)
+  (array-fold (λ (inner-idx acc) (combine inner-idx (padded2d-inner-ref padded inner-idx) acc))
               init
-              (indexes-array (padded2d-inner-shape p))))
+              (indexes-array (padded2d-inner-shape padded))))
 
-(define (padded2d-fold-inner p combine init)
-  (padded2d-fold-inner/index p (λ (_inner-index cell acc) (combine cell acc)) init))
+(define (padded2d-fold-inner padded combine init)
+  (padded2d-fold-inner/index padded (λ (_inner-index cell acc) (combine cell acc)) init))
 
 (define neighbor-offsets/4 '((-1 0) (0 -1) (0 1) (1 0)))
 (define neighbor-offsets/8 '((-1 -1) (-1 0) (-1 1) (0 -1) (0 1) (1 -1) (1 0) (1 1)))
 
-(define (padded2d-neighbor p
+(define (padded2d-neighbor padded
                            offsets
                            combine-proc
                            #:cell-pred [cell-pred (λ (_) #t)]
                            #:default-val [default-val 0])
-  (let* ([data (padded2d-data p)]
-         [pad-top (padded2d-pad-top p)]
-         [pad-bottom (padded2d-pad-bottom p)]
-         [pad-left (padded2d-pad-left p)]
-         [pad-right (padded2d-pad-right p)]
-         [inner-shape (padded2d-inner-shape p)]
-         [inner-rows (vector-ref inner-shape 0)]
-         [inner-cols (vector-ref inner-shape 1)])
+  (let* ([data (padded2d-data padded)]
+         [pad-top (padded2d-pad-top padded)]
+         [pad-bottom (padded2d-pad-bottom padded)]
+         [pad-left (padded2d-pad-left padded)]
+         [pad-right (padded2d-pad-right padded)])
+  (match-define (vector inner-rows inner-cols) (padded2d-inner-shape padded))
 
     ;; Calculate required padding from offsets
-    (define max-top (apply max (map (λ (offset) (- (first offset))) offsets)))
-    (define max-bottom (apply max (map (λ (offset) (first offset)) offsets)))
-    (define max-left (apply max (map (λ (offset) (- (second offset))) offsets)))
-    (define max-right (apply max (map (λ (offset) (second offset)) offsets)))
+    (define max-top (apply max (map (match-lambda [(list drow _dcol) (- drow)]) offsets)))
+    (define max-bottom (apply max (map (match-lambda [(list drow _dcol) drow]) offsets)))
+    (define max-left (apply max (map (match-lambda [(list _drow dcol) (- dcol)]) offsets)))
+    (define max-right (apply max (map (match-lambda [(list _drow dcol) dcol]) offsets)))
 
     (when (or (< pad-top max-top)
               (< pad-bottom max-bottom)
@@ -146,15 +141,15 @@
 
     (define neighbor-layers (map (λ (spec) (array-slice-ref data spec)) slice-specs))
 
-    (define inner-arr (padded2d-inner-array p))
+    (define inner-arr (padded2d-inner-array padded))
     (define neighbor-result (apply array-map combine-proc neighbor-layers))
 
     (array-map (λ (cell neighbor-val) (if (cell-pred cell) neighbor-val default-val))
                inner-arr
                neighbor-result)))
 
-(define (padded2d-neighbor-count-8 p)
-  (padded2d-neighbor p neighbor-offsets/8 +))
+(define (padded2d-neighbor-count-8 padded)
+  (padded2d-neighbor padded neighbor-offsets/8 +))
 
 (define (integer->digit n)
   (if (and (>= n 0) (<= n 9))
@@ -197,15 +192,12 @@
 
 (define (normalize-grid-lines s)
   (define lines (string-split s "\n"))
-  (cond
-    [(null? lines) '()]
-    [else
-     (let* ([rev (reverse lines)]
-            [head (car rev)]
-            [tail (cdr rev)])
-       (if (and (zero? (string-length head)) (pair? tail))
-           (reverse tail)
-           lines))]))
+  (match (reverse lines)
+    ['() '()]
+    [(cons head tail)
+     (if (and (zero? (string-length head)) (pair? tail))
+         (reverse tail)
+         lines)]))
 
 (define (string->char-array2d s)
   (define stripped (strip-leading-newline s))
@@ -220,8 +212,7 @@
   (define line-vec (list->vector lines))
   (build-array (vector height width)
                (λ (index)
-                 (define row (vector-ref index 0))
-                 (define col (vector-ref index 1))
+                 (match-define (vector row col) index)
                  (string-ref (vector-ref line-vec row) col))))
 
 (define (string->int-array2d/mapping s char->int)
@@ -240,11 +231,7 @@
   (string->int-array2d/mapping s digit->integer))
 
 (define (char-array2d->string arr #:elem->char [elem->char #f])
-  (define shape (array-shape arr))
-  (unless (= (vector-length shape) 2)
-    (error 'char-array2d->string "expected 2D array, got shape ~a" shape))
-  (define rows (vector-ref shape 0))
-  (define cols (vector-ref shape 1))
+  (match-define (vector rows cols) (array-shape arr))
   (define convert
     (if elem->char
         elem->char

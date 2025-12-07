@@ -12,8 +12,9 @@
   (for/sum ([i (in-range lo (add1 hi))] #:when (pred? (number->string i))) i))
 
 (define (parse-range range-string)
-  (define parts (string-split range-string "-"))
-  (values (string->number (first parts)) (string->number (second parts))))
+  (match (string-split range-string "-")
+    [(list lo hi) (values (string->number lo) (string->number hi))]
+    [_ (error 'parse-range "expected format 'lo-hi', got ~a" range-string)]))
 
 (define (sum-line line pred?)
   (for/sum ([range-string (string-split line ",")])
