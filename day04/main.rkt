@@ -37,13 +37,13 @@
   (array* arr (array- (array 1) accessible)))
 
 (define (count-removable arr)
-  (define (loop arr count)
+  (let loop ([arr arr]
+             [count 0])
     (let* ([accessible (accessible-rolls arr)]
            [n-accessible (array-all-sum accessible)])
       (if (> n-accessible 0)
           (loop (remove-accessible arr accessible) (+ count n-accessible))
-          count)))
-  (loop arr 0))
+          count))))
 
 (define (part2 input)
   (count-removable input))

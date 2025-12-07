@@ -9,7 +9,8 @@
       [(list? seq) (list->vector seq)]
       [else (error 'binary-search-by "expected list or vector, got ~a" seq)]))
 
-  (define (loop lo hi)
+  (let loop ([lo 0]
+             [hi (sub1 (vector-length vec))])
     (if (> lo hi)
         #f
         (let* ([mid (quotient (+ lo hi) 2)]
@@ -20,8 +21,7 @@
             ['less (loop lo (sub1 mid))]
             ['equal mid]
             ['greater (loop (add1 mid) hi)]
-            [else (error 'loop "cmp must return less, equal, greater, got ~a" ord)]))))
-  (loop 0 (sub1 (vector-length vec))))
+            [else (error 'loop "cmp must return less, equal, greater, got ~a" ord)])))))
 
 (module+ test
   (require rackunit)

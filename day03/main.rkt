@@ -49,7 +49,8 @@
         (values i-mx mx))))
 
 (define (lexicographic-max-subsequence xs k)
-  (define (loop xs k)
+  (let loop ([xs xs]
+             [k k])
     (cond
       [(zero? k) '()]
       [else
@@ -62,8 +63,7 @@
 
        (define xs* (drop xs (add1 i-mx)))
 
-       (cons mx (loop xs* (sub1 k)))]))
-  (loop xs k))
+       (cons mx (loop xs* (sub1 k)))])))
 
 (define (digits-seq->integer seq)
   (for/fold ([n 0]) ([v seq])
