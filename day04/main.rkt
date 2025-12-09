@@ -24,11 +24,11 @@
                                     #:default-val 9)])
     (array-map (λ (n) (if (< n 4) 1 0)) counts)))
 
-(define (char->int-array2d str)
+(define (string->int-array2d str)
   (string->int-array2d/mapping str char->int))
 
 (define (parse-input path)
-  (char->int-array2d (file->string path)))
+  (string->int-array2d (file->string path)))
 
 (define (part1 input)
   (array-all-sum (accessible-rolls input)))
@@ -51,7 +51,7 @@
 (module+ test
   (require rackunit)
 
-  (let ([grid (char->int-array2d "
+  (let ([grid (string->int-array2d "
 @.@
 .@.
 @.@")])
@@ -61,12 +61,12 @@
 @.@
 "))
 
-  (let* ([grid (char->int-array2d "
+  (let* ([grid (string->int-array2d "
 @.@
 .@.
 @.@")]
          [base (array-map int->char grid)]
-         [mask (char->int-array2d "
+         [mask (string->int-array2d "
 .@.
 @.@
 .@.")]
@@ -77,7 +77,7 @@ x@x
 @x@
 "))
 
-  (let ([grid (char->int-array2d "
+  (let ([grid (string->int-array2d "
 @.@
 ..@
 @@.")])
@@ -88,7 +88,7 @@ x@x
 "))
 
   (let ([result
-         (char->int-array2d
+         (string->int-array2d
           "
 ..@@.@@@@.
 @@@.@.@.@@
