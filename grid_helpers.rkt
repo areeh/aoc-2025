@@ -161,7 +161,7 @@
       (- (char->integer ch) (char->integer #\0))
       (error 'digit->integer "expected digit character, got ~a" ch)))
 
-(define (overlay-where base-arr mask-arr overlay-val [mask-test (λ (v) (= v 1))])
+(define (overlay-where base-arr mask-arr overlay-val [mask-test (λ (v) (>= v 1))])
   (define base-shape (array-shape base-arr))
   (define mask-shape (array-shape mask-arr))
   (unless (equal? base-shape mask-shape)
