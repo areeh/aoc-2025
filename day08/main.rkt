@@ -63,8 +63,7 @@
   (for/first ([pair pairs]
               #:when (begin
                        (set! circuits (merge-touching circuits pair))
-                       (for/or ([c circuits])
-                         (= (set-count c) n-coords))))
+                       (= (set-count (first circuits)) n-coords)))
     pair))
 
 (define (part2 input)
