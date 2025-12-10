@@ -28,9 +28,8 @@
   (match input
     [(cons arr ops)
      (define prod-arr
-       (array-slice-ref arr (list (::) (indices-where (lambda (ch) (string=? ch "*")) ops))))
-     (define sum-arr
-       (array-slice-ref arr (list (::) (indices-where (lambda (ch) (string=? ch "+")) ops))))
+       (array-slice-ref arr (list (::) (indices-where (λ (ch) (string=? ch "*")) ops))))
+     (define sum-arr (array-slice-ref arr (list (::) (indices-where (λ (ch) (string=? ch "+")) ops))))
      (+ (array-all-sum (array-axis-prod prod-arr 0)) (array-all-sum sum-arr))]))
 
 (define (char-array->integer arr)
@@ -80,9 +79,7 @@
     (define op-locs (op-indexed (array->list op-arr)))
 
     (define answers
-      (map (match-lambda
-             [(cons op j) (apply op (numbers-in-block j number-arr cols))])
-           op-locs))
+      (map (match-λ [(cons op j) (apply op (numbers-in-block j number-arr cols))]) op-locs))
 
     (apply + answers)))
 
@@ -146,9 +143,7 @@
     (check-equal? b2 (list 136 25 4))
 
     (define (solve-problems)
-      (map (match-lambda
-             [(cons op j) (apply op (grab j))])
-           op-locs))
+      (map (match-λ [(cons op j) (apply op (grab j))]) op-locs))
 
     (check-equal? (solve-problems) (list 8544 165)))
 
