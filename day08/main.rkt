@@ -44,7 +44,7 @@
 (define (merge-touching circuits edge)
   (match-define (list i j) edge)
   (define-values (touching rest)
-    (partition (lambda (s) (or (set-member? s i) (set-member? s j))) circuits))
+    (partition (λ (s) (or (set-member? s i) (set-member? s j))) circuits))
   (define merged
     (if (null? touching)
         (set i j)
@@ -60,11 +60,9 @@
 
 (define (edge-when-fully-connected pairs n-coords)
   (define circuits '())
-  (for/first ([pair pairs]
-              #:when (begin
-                       (set! circuits (merge-touching circuits pair))
-                       (= (set-count (first circuits)) n-coords)))
-    pair))
+  (for/or ([pair pairs])
+    (set! circuits (merge-touching circuits pair))
+    (and (= (set-count (first circuits)) n-coords) pair)))
 
 (define (part2 input)
   (let* ([n (vector-ref (array-shape input) 0)]
