@@ -33,29 +33,33 @@
     (error 'part1 "expected a DAG"))
   (count-paths graph 'you 'out))
 
-(define (make-rank-map g)
+(define (topological-index-map g)
   (for/hasheq ([node (in-list (tsort g))]
                [i (in-naturals)])
     (values node i)))
 
 (define (count-paths/route g route)
+  ; you can combine any route A->B with any route B->C to get A->C, so path count is the product
   (for/product ([from (in-list route)] [to (in-list (cdr route))]) (count-paths g from to)))
 
-(define (feasible? ranks route)
+(define (feasible? tp-order route)
   (for/and ([from (in-list route)]
             [to (in-list (cdr route))])
-    (< (hash-ref ranks from) (hash-ref ranks to))))
+    ; < is safe for topological index, but misses infeasible at same topological rank
+    (< (hash-ref tp-order from) (hash-ref tp-order to))))
 
 (define (part2 graph)
   (unless (dag? graph)
-    (error "Not a DAG"))
+    (error 'part2 "expected a DAG"))
 
-  (define ranks (make-rank-map graph))
+  (define tp-index (topological-index-map graph))
 
   (define route-fft '(svr fft dac out))
   (define route-dac '(svr dac fft out))
-  (define routes (filter (curry feasible? ranks) (list route-fft route-dac)))
-  (apply + (map (curry count-paths/route graph) routes)))
+  (define routes (filter (curry feasible? tp-index) (list route-fft route-dac)))
+
+  ; routes in opposite directions sum as only cycles would allow both directions
+  (for/sum ([route routes]) (count-paths/route graph route)))
 
 (module+ test
   (require rackunit)
