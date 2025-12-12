@@ -3,6 +3,14 @@
 (require profile
          graph)
 
+(define colors (hasheq 'fft 1 'dac 1 'svr 2 'you 3 'out 4))
+
+(define (write-dot g path)
+  (call-with-output-file
+   path
+   (λ (out) (graphviz g #:output out #:colors colors #:graph-attributes '((rankdir LR))))
+   #:exists 'replace))
+
 (define (parse-input path)
   (unweighted-graph/adj (call-with-input-file path
                                               (λ (in)
@@ -19,14 +27,6 @@
                (thunk (if (equal? from goal)
                           1
                           (for/sum ([to (in-neighbors g from)]) (count-from to)))))))
-
-(define colors (hasheq 'fft 1 'dac 1 'svr 2 'you 3 'out 4))
-
-(define (write-dot g path)
-  (call-with-output-file
-   path
-   (λ (out) (graphviz g #:output out #:colors colors #:graph-attributes '((rankdir LR))))
-   #:exists 'replace))
 
 (define (part1 graph)
   (unless (dag? graph)
