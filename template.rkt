@@ -1,5 +1,7 @@
 #lang racket
 
+(require profile)
+
 (define (parse-input path)
   (file->string path))
 
@@ -18,7 +20,17 @@
   (check-equal? example2 'TODO))
 
 (module+ main
-  (define input (parse-input "inputs/input.txt"))
+  (define input (parse-input "dayxx/inputs/input.txt"))
 
-  (printf "Part 1: ~a\n" (part1 input))
-  (printf "Part 2: ~a\n" (part2 input)))
+  (define run
+    (λ ()
+      (printf "Part 1: ~a\n" (part1 input))
+      (printf "Part 2: ~a\n" (part2 input))))
+
+  (define prof? (getenv "PROFILE"))
+
+  (if prof?
+      (begin
+        (printf "Profiling...\n")
+        (profile-thunk run))
+      (run)))
