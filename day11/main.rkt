@@ -31,7 +31,6 @@
    #:exists 'replace))
 
 (define (part1 graph)
-  ; (displayln (graphviz graph))
   (unless (dag? graph)
     (error 'part1 "expected a DAG"))
   (define paths (all-paths graph 'you 'out))
