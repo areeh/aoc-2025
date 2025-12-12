@@ -84,7 +84,7 @@
     (list lights-bits toggle-indexes joltage-vals width)))
 
 (define (toggles->string width bits-list)
-  (map (lambda (bits) (bits->string width bits)) bits-list))
+  (map (λ (bits) (bits->string width bits)) bits-list))
 
 (define (get-children node toggles)
   (match-define (list state path) node)
