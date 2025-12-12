@@ -10,17 +10,15 @@
                                                   (map string->symbol
                                                        (regexp-match* #px"[a-z]+" line)))))))
 
-(define (all-paths g start goal)
+(define (count-paths g start goal)
   (define memo (make-hasheq))
 
-  (let paths-from ([from start])
+  (let count-from ([from start])
     (hash-ref! memo
                from
                (thunk (if (equal? from goal)
-                          (list (list goal))
-                          (for*/list ([to (in-neighbors g from)]
-                                      [path (in-list (paths-from to))])
-                            (cons from path)))))))
+                          1
+                          (for/sum ([to (in-neighbors g from)]) (count-from to)))))))
 
 (define colors (hasheq 'fft 1 'dac 1 'svr 2 'you 3 'out 4))
 
@@ -33,37 +31,30 @@
 (define (part1 graph)
   (unless (dag? graph)
     (error 'part1 "expected a DAG"))
-  (define paths (all-paths graph 'you 'out))
-  (length paths))
+  (count-paths graph 'you 'out))
 
-(define (has-path? g start goal)
-  (do-dfs g
-          #:order (λ (_all) (list start))
-          #:init #f
-          #:prologue (_from to acc)
-          (or acc (equal? to goal))
-          #:break (_from _to acc)
-          acc
-          #:return (acc)
-          acc))
+(define (make-rank-map g)
+  (for/hasheq ([node (in-list (tsort g))]
+               [i (in-naturals)])
+    (values node i)))
 
-(define (has-path?/route graph route)
+(define (count-paths/route g route)
+  (for/product ([from (in-list route)] [to (in-list (cdr route))]) (count-paths g from to)))
+
+(define (feasible? ranks route)
   (for/and ([from (in-list route)]
             [to (in-list (cdr route))])
-    (has-path? graph from to)))
-
-(define (count-paths/route graph route)
-  (for/product ([from (in-list route)] [to (in-list (cdr route))])
-               (length (all-paths graph from to))))
+    (< (hash-ref ranks from) (hash-ref ranks to))))
 
 (define (part2 graph)
   (unless (dag? graph)
-    (error 'part2 "expected a DAG"))
+    (error "Not a DAG"))
+
+  (define ranks (make-rank-map graph))
 
   (define route-fft '(svr fft dac out))
   (define route-dac '(svr dac fft out))
-
-  (define routes (filter (curry has-path?/route graph) (list route-fft route-dac)))
+  (define routes (filter (curry feasible? ranks) (list route-fft route-dac)))
   (apply + (map (curry count-paths/route graph) routes)))
 
 (module+ test
@@ -77,8 +68,8 @@
 (module+ main
   (define input (parse-input "day11/inputs/input.txt"))
 
-  (write-dot input "graph.dot")
-  (printf "Wrote graph.dot\n")
+  ;# (write-dot input "graph.dot")
+  ;# (printf "Wrote graph.dot\n")
 
   (define run
     (λ ()
