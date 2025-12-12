@@ -19,6 +19,7 @@
     pkgs.glib
     pkgs.pango
     pkgs.gtk2-x11
+    pkgs.graphviz
   ];
 
   # https://devenv.sh/languages/
