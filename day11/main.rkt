@@ -12,11 +12,10 @@
    #:exists 'replace))
 
 (define (parse-input path)
-  (unweighted-graph/adj (call-with-input-file path
-                                              (λ (in)
-                                                (for/list ([line (in-lines in)])
-                                                  (map string->symbol
-                                                       (regexp-match* #px"[a-z]+" line)))))))
+  (define (lines->adj lines)
+    (for/list ([line (in-lines lines)])
+      (map string->symbol (regexp-match* #px"[a-z]+" line))))
+  (unweighted-graph/adj (call-with-input-file path lines->adj)))
 
 (define (count-paths g start goal)
   (define memo (make-hasheq))
