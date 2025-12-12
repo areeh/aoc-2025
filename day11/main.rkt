@@ -22,6 +22,14 @@
                                       [path (in-list (paths-from to))])
                             (cons from path)))))))
 
+(define colors (hasheq 'fft 1 'dac 1 'svr 2 'you 3 'out 4))
+
+(define (write-dot g path)
+  (call-with-output-file
+   path
+   (λ (out) (graphviz g #:output out #:colors colors #:graph-attributes '((rankdir LR))))
+   #:exists 'replace))
+
 (define (part1 graph)
   ; (displayln (graphviz graph))
   (unless (dag? graph)
@@ -53,8 +61,8 @@
   (unless (dag? graph)
     (error 'part2 "expected a DAG"))
 
-  (define route-fft (list 'svr 'fft 'dac 'out))
-  (define route-dac (list 'svr 'dac 'fft 'out))
+  (define route-fft '(svr fft dac out))
+  (define route-dac '(svr dac fft out))
 
   (define routes (filter (curry has-path?/route graph) (list route-fft route-dac)))
   (apply + (map (curry count-paths/route graph) routes)))
@@ -69,6 +77,9 @@
 
 (module+ main
   (define input (parse-input "day11/inputs/input.txt"))
+
+  (write-dot input "graph.dot")
+  (printf "Wrote graph.dot\n")
 
   (define run
     (λ ()
