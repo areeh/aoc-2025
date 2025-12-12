@@ -5,7 +5,7 @@
 
 (define (parse-input path)
   (unweighted-graph/adj (call-with-input-file path
-                                              (lambda (in)
+                                              (λ (in)
                                                 (for/list ([line (in-lines in)])
                                                   (map string->symbol
                                                        (regexp-match* #px"[a-z]+" line)))))))
@@ -38,7 +38,7 @@
 
 (define (has-path? g start goal)
   (do-dfs g
-          #:order (lambda (_all) (list start))
+          #:order (λ (_all) (list start))
           #:init #f
           #:prologue (_from to acc)
           (or acc (equal? to goal))
