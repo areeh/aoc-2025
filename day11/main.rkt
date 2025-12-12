@@ -71,8 +71,8 @@
 (module+ main
   (define input (parse-input "day11/inputs/input.txt"))
 
-  ;# (write-dot input "graph.dot")
-  ;# (printf "Wrote graph.dot\n")
+  ;# (write-dot input "day11/graph.dot")
+  ;# (printf "Wrote day11/graph.dot\n")
 
   (define run
     (λ ()
