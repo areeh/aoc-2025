@@ -39,15 +39,13 @@
              [zero-count 0]
              #:result zero-count)
             ([line lines])
-    (define delta (parse-line line))
-    (define q (quotient delta modulus))
-    (define r (remainder delta modulus))
-
-    (define new-position (rotate-dial position delta))
-    (define new-zero-count
-      (+ (abs q) (bool->int (or (zero? new-position) (crosses-zero? r position))) zero-count))
-
-    (values new-position new-zero-count)))
+    (let* ([delta (parse-line line)]
+           [q (quotient delta modulus)]
+           [r (remainder delta modulus)]
+           [new-position (rotate-dial position delta)]
+           [new-zero-count
+            (+ (abs q) (bool->int (or (zero? new-position) (crosses-zero? r position))) zero-count)])
+      (values new-position new-zero-count))))
 
 (module+ test
   (require rackunit)

@@ -14,19 +14,17 @@
   (when (< (length xs) 2)
     (error 'top-sequence-2 "sequence must have length at least 2"))
 
-  (define last-elem (last xs))
-  (define prefix (drop-right xs 1))
-
-  (define-values (left right)
-    (for/fold ([left 0]
-               [right 0])
-              ([i prefix])
-      (cond
-        [(> i left) (values i 0)]
-        [(> i right) (values left i)]
-        [else (values left right)])))
-
-  (cons left (if (> last-elem right) last-elem right)))
+  (let* ([last-elem (last xs)]
+         [prefix (drop-right xs 1)])
+    (define-values (left right)
+      (for/fold ([left 0]
+                 [right 0])
+                ([i prefix])
+        (cond
+          [(> i left) (values i 0)]
+          [(> i right) (values left i)]
+          [else (values left right)])))
+    (cons left (if (> last-elem right) last-elem right))))
 
 (define (2-digits->integer pair)
   (match pair
@@ -54,16 +52,13 @@
     (cond
       [(zero? k) '()]
       [else
-       (define n (length xs))
-       (define prefix-len (add1 (- n k)))
-       (define prefix (take xs prefix-len))
-
-       (define i-mx (index-max prefix))
-       (define mx (list-ref xs i-mx))
-
-       (define xs* (drop xs (add1 i-mx)))
-
-       (cons mx (loop xs* (sub1 k)))])))
+       (let* ([n (length xs)]
+              [prefix-len (add1 (- n k))]
+              [prefix (take xs prefix-len)]
+              [i-mx (index-max prefix)]
+              [mx (list-ref xs i-mx)]
+              [xs* (drop xs (add1 i-mx))])
+         (cons mx (loop xs* (sub1 k))))])))
 
 (define (digits-seq->integer seq)
   (for/fold ([n 0]) ([v seq])

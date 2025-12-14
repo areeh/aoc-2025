@@ -1,12 +1,12 @@
 #lang racket
 
-(require profile)
+(require profile
+         megaparsack
+         megaparsack/text
+         data/monad
+         data/applicative)
 
-(define (char->bool ch)
-  (case ch
-    [(#\.) #f]
-    [(#\#) #t]
-    [else (error 'char->bool "expected . or #, got ~a" ch)]))
+(struct problem (lights toggles joltage width) #:transparent)
 
 (define (bool->char b)
   (if b #\# #\.))
@@ -33,29 +33,34 @@
       (bool->char v)))
   (string-append "[" (list->string chars) "]"))
 
-(define (get-wrapped str pre-ch post-ch)
-  (define n (string-length str))
-  (unless (and (>= n 2) (char=? (string-ref str 0) pre-ch) (char=? (string-ref str (sub1 n)) post-ch))
-    (error 'get-wrapped "expected format like \"[...]\", got ~a" str))
-  (substring str 1 (sub1 n)))
+(define bool-char/p (or/p (do (char/p #\#) (pure #t)) (do (char/p #\.) (pure #f))))
 
-(define (string->bits/lights str)
-  (define inner (get-wrapped str #\[ #\]))
-  (define bools
-    (for/list ([ch (in-string inner)])
-      (char->bool ch)))
-  (bool-list->int bools))
+(define lights/p
+  (do (char/p #\[)
+      [bools <- (many+/p bool-char/p)]
+      (char/p #\])
+      (pure (cons (bool-list->int bools) (length bools)))))
 
-(define (string->indexes str)
-  (map string->number (string-split str ",")))
+(define int-list/p
+  (do [first <- integer/p] [rest <- (many/p (do (char/p #\,) integer/p))] (pure (cons first rest))))
 
-(define (joltage->indexes str)
-  (define inner (get-wrapped str #\{ #\}))
-  (string->indexes inner))
+(define joltage/p (do (char/p #\{) [vals <- int-list/p] (char/p #\}) (pure vals)))
 
-(define (toggle->indexes str)
-  (define inner (get-wrapped str #\( #\)))
-  (string->indexes inner))
+(define toggle/p (do (char/p #\() [vals <- int-list/p] (char/p #\)) (pure (sort vals <))))
+
+(define line/p
+  (do [lights-result <- lights/p]
+      (many+/p space/p)
+      [toggles <- (many+/p (do [t <- toggle/p] (many+/p space/p) (pure t)))]
+      [joltage <- joltage/p]
+      (or/p (char/p #\newline) eof/p)
+      (match-let ([(cons lights-bits width) lights-result])
+        (pure (problem lights-bits toggles joltage width)))))
+
+(define input/p (many+/p line/p))
+
+(define (parse-input path)
+  (parse-result! (parse-string input/p (file->string path))))
 
 (define (mark-true-at-indices bools idxs)
   (for/fold ([bs bools]) ([i idxs])
@@ -63,28 +68,6 @@
 
 (define (true-indices->bool idxs n)
   (mark-true-at-indices (falses n) idxs))
-
-(define (string->bits/toggle str n)
-  (bool-list->int (true-indices->bool (toggle->indexes str) n)))
-
-(define (parse-input path)
-  (for/list ([line (file->lines path)])
-    (define parts (string-split line))
-    (match-define (list lights rest ...) parts)
-    (match-define (list joltage toggles ...) (reverse rest))
-    (define width (- (string-length lights) 2))
-
-    (define lights-bits (string->bits/lights lights))
-    (define toggle-indexes
-      (for/list ([t (in-list toggles)])
-        (sort (toggle->indexes t) <))) ; sorted ascending
-
-    (define joltage-vals (joltage->indexes joltage))
-
-    (list lights-bits toggle-indexes joltage-vals width)))
-
-(define (toggles->string width bits-list)
-  (map (λ (bits) (bits->string width bits)) bits-list))
 
 (define (get-children node toggles)
   (match-define (list state path) node)
@@ -112,8 +95,8 @@
 
 (define (part1 input)
   (define distances
-    (for/list ([problem input])
-      (match-define (list lights toggle-indexes _joltage width) problem)
+    (for/list ([prob input])
+      (match-define (problem lights toggle-indexes _joltage width) prob)
 
       (define toggles
         (for/list ([idxs (in-list toggle-indexes)])
@@ -130,38 +113,36 @@
 (define (upper-bound target button-idxs)
   (ceil-div (apply + target) (apply min (map length button-idxs))))
 
+(define (solve-problem prob)
+  (match-let* ([(problem _ button-idxs target _) prob]
+               [n (length target)]
+               [ub (upper-bound target button-idxs)]
+               [buttons (for/list ([b (in-list button-idxs)])
+                          (for/list ([i (in-range n)])
+                            (if (member i b) 1 0)))]
+               ;; Precompute: Pattern Vector -> Min Cost (Iterate k 0..N)
+               [patterns (for*/fold ([memo (hash)])
+                                    ([k (in-range (add1 (length buttons)))]
+                                     [combo (in-combinations buttons k)])
+                           (define pat (apply map + (cons (make-list n 0) combo)))
+                           (if (hash-has-key? memo pat)
+                               memo
+                               (hash-set memo pat k)))]
+               [memo (make-hash)])
+    (let solve ([goal target])
+      (hash-ref!
+       memo
+       goal
+       (thunk (if (andmap zero? goal)
+                  0
+                  (for/fold ([best ub]) ([(pat cost) (in-hash patterns)])
+                    ;; Check bounds and parity
+                    (if (andmap (λ (p g) (and (<= p g) (= (modulo p 2) (modulo g 2)))) pat goal)
+                        (min best (+ cost (* 2 (solve (map (λ (p g) (/ (- g p) 2)) pat goal)))))
+                        best))))))))
+
 (define (part2 input)
-  (for/sum
-   ([prob input])
-   (match-define (list _ button-idxs target _) prob)
-   (define n (length target))
-   (define ub (upper-bound target button-idxs))
-   (define buttons
-     (for/list ([b (in-list button-idxs)])
-       (for/list ([i (in-range n)])
-         (if (member i b) 1 0))))
-   ;; Precompute: Pattern Vector -> Min Cost (Iterate k 0..N)
-   (define patterns
-     (for*/fold ([memo (hash)])
-                ([k (in-range (add1 (length buttons)))]
-                 [combo (in-combinations buttons k)])
-       (define pat (apply map + (cons (make-list n 0) combo)))
-       (if (hash-has-key? memo pat)
-           memo
-           (hash-set memo pat k))))
-   ;; Recursive Solver
-   (define memo (make-hash))
-   (let solve ([goal target])
-     (hash-ref!
-      memo
-      goal
-      (thunk (if (andmap zero? goal)
-                 0
-                 (for/fold ([best ub]) ([(pat cost) (in-hash patterns)])
-                   ;; Check bounds and parity
-                   (if (andmap (λ (p g) (and (<= p g) (= (modulo p 2) (modulo g 2)))) pat goal)
-                       (min best (+ cost (* 2 (solve (map (λ (p g) (/ (- g p) 2)) pat goal)))))
-                       best))))))))
+  (for/sum ([prob input]) (solve-problem prob)))
 
 (module+ test
   (require rackunit)
@@ -195,8 +176,9 @@
     (define s (bits->string n x))
     (check-equal? s "[#.#.#..]")
 
-    (define x2 (string->bits/lights s))
+    (match-define (cons x2 width) (parse-result! (parse-string lights/p s)))
     (check-equal? x2 x)
+    (check-equal? width n)
     (check-equal? (int->bool-list n x2) bs))
 
   (test-case "xor pipeline"

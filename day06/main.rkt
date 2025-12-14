@@ -72,15 +72,12 @@
          [shape (array-shape arr)]
          [rows (vector-ref shape 0)]
          [cols (vector-ref shape 1)]
-         [num-rows-spec (:: 0 (sub1 rows))])
-
-    (define number-arr (array-slice-ref arr (list num-rows-spec (::))))
-    (define op-arr (array-slice-ref arr (list (sub1 rows) (::))))
-    (define op-locs (op-indexed (array->list op-arr)))
-
-    (define answers
-      (map (match-λ [(cons op j) (apply op (numbers-in-block j number-arr cols))]) op-locs))
-
+         [num-rows-spec (:: 0 (sub1 rows))]
+         [number-arr (array-slice-ref arr (list num-rows-spec (::)))]
+         [op-arr (array-slice-ref arr (list (sub1 rows) (::)))]
+         [op-locs (op-indexed (array->list op-arr))]
+         [answers (map (match-λ [(cons op j) (apply op (numbers-in-block j number-arr cols))])
+                       op-locs)])
     (apply + answers)))
 
 (module+ test
@@ -116,22 +113,17 @@
   ;; vector as a sequence
   (check-equal? (map-while (λ (x) (* 2 x)) (λ (y) (<= y 6)) #(1 2 3 4 5)) '(2 4 6))
 
-  (let* ([input "
+  (match-let* ([input "
    123   1
     45  23
      6 456
    *   +  "]
-         [arr (string->char-array2d input)]
-         [shape (array-shape arr)]
-         [rows (vector-ref shape 0)]
-         [cols (vector-ref shape 1)]
-         ;; ignore last row containing the operators
-         [rows-spec (:: 0 (sub1 rows))])
-
-    ;; extract block starting at column j
-    (define number-arr (array-slice-ref arr (list rows-spec (::))))
-    (define op-arr (array-slice-ref arr (list (sub1 rows) (::))))
-    (define op-locs (op-indexed (array->list op-arr)))
+               [arr (string->char-array2d input)]
+               [(vector rows cols) (array-shape arr)]
+               [rows-spec (:: 0 (sub1 rows))]
+               [number-arr (array-slice-ref arr (list rows-spec (::)))]
+               [op-arr (array-slice-ref arr (list (sub1 rows) (::)))]
+               [op-locs (op-indexed (array->list op-arr))])
 
     (define (grab j)
       (numbers-in-block j number-arr cols))

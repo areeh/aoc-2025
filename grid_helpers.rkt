@@ -47,12 +47,12 @@
              (inner->outer-index inner-idx (padded2d-pad-top padded) (padded2d-pad-left padded))))
 
 (define (padded2d-inner-shape padded)
-  (define-values (total-rows total-cols pad-top pad-bottom pad-left pad-right) (padded2d-dims padded))
-  (define inner-rows (- total-rows pad-top pad-bottom))
-  (define inner-cols (- total-cols pad-left pad-right))
-  (when (or (negative? inner-rows) (negative? inner-cols))
-    (error 'padded2d-inner-shape "padding too large for shape ~a" (vector total-rows total-cols)))
-  (vector inner-rows inner-cols))
+  (let*-values ([(total-rows total-cols pad-top pad-bottom pad-left pad-right) (padded2d-dims padded)]
+                [(inner-rows) (- total-rows pad-top pad-bottom)]
+                [(inner-cols) (- total-cols pad-left pad-right)])
+    (when (or (negative? inner-rows) (negative? inner-cols))
+      (error 'padded2d-inner-shape "padding too large for shape ~a" (vector total-rows total-cols)))
+    (vector inner-rows inner-cols)))
 
 (define (padded2d-inner-slice-spec padded)
   (define-values (total-rows total-cols pad-top pad-bottom pad-left pad-right) (padded2d-dims padded))
@@ -63,20 +63,18 @@
 
 (define (pad-2d arr pad-top pad-bottom pad-left pad-right [pad-val 0])
   (match-define (vector rows cols) (array-shape arr))
-  (define new-rows (+ pad-top rows pad-bottom))
-  (define new-cols (+ pad-left cols pad-right))
-  (define padded
-    (build-array
-     (vector new-rows new-cols)
-     (λ (index)
-       (match-define (vector row col) index)
-       (define inner-row (- row pad-top))
-       (define inner-col (- col pad-left))
-       (if (and (<= 0 inner-row) (< inner-row rows)
-                (<= 0 inner-col) (< inner-col cols))
-           (array-ref arr (vector inner-row inner-col))
-           pad-val))))
-  (padded2d padded pad-top pad-bottom pad-left pad-right))
+  (let* ([new-rows (+ pad-top rows pad-bottom)]
+         [new-cols (+ pad-left cols pad-right)]
+         [padded (build-array
+                  (vector new-rows new-cols)
+                  (λ (index)
+                    (match-define (vector row col) index)
+                    (define inner-row (- row pad-top))
+                    (define inner-col (- col pad-left))
+                    (if (and (<= 0 inner-row) (< inner-row rows) (<= 0 inner-col) (< inner-col cols))
+                        (array-ref arr (vector inner-row inner-col))
+                        pad-val)))])
+    (padded2d padded pad-top pad-bottom pad-left pad-right)))
 
 (define (pad-n arr n [pad-val 0])
   (pad-2d arr n n n n pad-val))
@@ -112,41 +110,47 @@
          [pad-bottom (padded2d-pad-bottom padded)]
          [pad-left (padded2d-pad-left padded)]
          [pad-right (padded2d-pad-right padded)])
-  (match-define (vector inner-rows inner-cols) (padded2d-inner-shape padded))
+    (match-define (vector inner-rows inner-cols) (padded2d-inner-shape padded))
 
     ;; Calculate required padding from offsets
-    (define max-top (apply max (map (match-lambda [(list drow _dcol) (- drow)]) offsets)))
-    (define max-bottom (apply max (map (match-lambda [(list drow _dcol) drow]) offsets)))
-    (define max-left (apply max (map (match-lambda [(list _drow dcol) (- dcol)]) offsets)))
-    (define max-right (apply max (map (match-lambda [(list _drow dcol) dcol]) offsets)))
+    (let* ([max-top (apply max
+                           (map (match-lambda
+                                  [(list drow _dcol) (- drow)])
+                                offsets))]
+           [max-bottom (apply max
+                              (map (match-lambda
+                                     [(list drow _dcol) drow])
+                                   offsets))]
+           [max-left (apply max
+                            (map (match-lambda
+                                   [(list _drow dcol) (- dcol)])
+                                 offsets))]
+           [max-right (apply max
+                             (map (match-lambda
+                                    [(list _drow dcol) dcol])
+                                  offsets))])
+      (when (or (< pad-top max-top)
+                (< pad-bottom max-bottom)
+                (< pad-left max-left)
+                (< pad-right max-right))
+        (error 'padded2d-neighbor
+               "requires at least ~a padding (top bottom left right), got ~a"
+               (list max-top max-bottom max-left max-right)
+               (list pad-top pad-bottom pad-left pad-right))))
 
-    (when (or (< pad-top max-top)
-              (< pad-bottom max-bottom)
-              (< pad-left max-left)
-              (< pad-right max-right))
-      (error 'padded2d-neighbor
-             "requires at least ~a padding (top bottom left right), got ~a"
-             (list max-top max-bottom max-left max-right)
-             (list pad-top pad-bottom pad-left pad-right)))
-
-    (define (make-axis-slice pad inner-len delta)
-      (let ([start (+ pad delta)]) (:: start (+ start inner-len))))
-
-    (define slice-specs
-      (map (match-lambda
-             [(list drow dcol)
-              (list (make-axis-slice pad-top inner-rows drow)
-                    (make-axis-slice pad-left inner-cols dcol))])
-           offsets))
-
-    (define neighbor-layers (map (λ (spec) (array-slice-ref data spec)) slice-specs))
-
-    (define inner-arr (padded2d-inner-array padded))
-    (define neighbor-result (apply array-map combine-proc neighbor-layers))
-
-    (array-map (λ (cell neighbor-val) (if (cell-pred cell) neighbor-val default-val))
-               inner-arr
-               neighbor-result)))
+    (let* ([make-axis-slice (λ (pad inner-len delta)
+                              (let ([start (+ pad delta)]) (:: start (+ start inner-len))))]
+           [slice-specs (map (match-lambda
+                               [(list drow dcol)
+                                (list (make-axis-slice pad-top inner-rows drow)
+                                      (make-axis-slice pad-left inner-cols dcol))])
+                             offsets)]
+           [neighbor-layers (map (λ (spec) (array-slice-ref data spec)) slice-specs)]
+           [inner-arr (padded2d-inner-array padded)]
+           [neighbor-result (apply array-map combine-proc neighbor-layers)])
+      (array-map (λ (cell neighbor-val) (if (cell-pred cell) neighbor-val default-val))
+                 inner-arr
+                 neighbor-result))))
 
 (define (padded2d-neighbor-count-8 padded)
   (padded2d-neighbor padded neighbor-offsets/8 +))
@@ -246,47 +250,40 @@
   (string-join lines "\n"))
 
 (define (grid-diff-message expected-str actual-str)
-  (define expected-lines (normalize-grid-lines expected-str))
-  (define actual-lines (normalize-grid-lines actual-str))
-
-  (define expected-rows (length expected-lines))
-  (define actual-rows (length actual-lines))
-
-  (define expected-cols
-    (if (zero? expected-rows)
-        0
-        (string-length (first expected-lines))))
-  (define actual-cols
-    (if (zero? actual-rows)
-        0
-        (string-length (first actual-lines))))
-
-  ;; Add shape info if dimensions differ
-  (define shape-note
-    (if (or (not (= expected-rows actual-rows)) (not (= expected-cols actual-cols)))
-        (format "expected shape: ~ax~a~nactual   shape: ~ax~a~n~n"
-                expected-rows
-                expected-cols
-                actual-rows
-                actual-cols)
-        ""))
-
-  (format "~aexpected:~n~a~n~nactual:~n~a"
-          shape-note
-          (string-join expected-lines "\n")
-          (string-join actual-lines "\n")))
+  (let* ([expected-lines (normalize-grid-lines expected-str)]
+         [actual-lines (normalize-grid-lines actual-str)]
+         [expected-rows (length expected-lines)]
+         [actual-rows (length actual-lines)]
+         [expected-cols (if (zero? expected-rows)
+                            0
+                            (string-length (first expected-lines)))]
+         [actual-cols (if (zero? actual-rows)
+                          0
+                          (string-length (first actual-lines)))]
+         ;; Add shape info if dimensions differ
+         [shape-note (if (or (not (= expected-rows actual-rows)) (not (= expected-cols actual-cols)))
+                         (format "expected shape: ~ax~a~nactual   shape: ~ax~a~n~n"
+                                 expected-rows
+                                 expected-cols
+                                 actual-rows
+                                 actual-cols)
+                         "")])
+    (format "~aexpected:~n~a~n~nactual:~n~a"
+            shape-note
+            (string-join expected-lines "\n")
+            (string-join actual-lines "\n"))))
 
 ;; Core comparison function - compares two grid strings
 (define-check (check-grid-equal?/helper actual-str expected-str message)
-  (define expected-stripped (strip-leading-newline expected-str))
-  (define expected-dedented (strip-common-indent expected-stripped))
-  (define expected-norm (string-join (normalize-grid-lines expected-dedented) "\n"))
-  (define actual-stripped (strip-leading-newline actual-str))
-  (define actual-dedented (strip-common-indent actual-stripped))
-  (define actual-norm (string-join (normalize-grid-lines actual-dedented) "\n"))
-  (unless (string=? expected-norm actual-norm)
-    (define diff (grid-diff-message expected-norm actual-norm))
-    (with-check-info (['message message] ['diff diff]) (fail-check (format "~n~a" diff)))))
+  (let* ([expected-stripped (strip-leading-newline expected-str)]
+         [expected-dedented (strip-common-indent expected-stripped)]
+         [expected-norm (string-join (normalize-grid-lines expected-dedented) "\n")]
+         [actual-stripped (strip-leading-newline actual-str)]
+         [actual-dedented (strip-common-indent actual-stripped)]
+         [actual-norm (string-join (normalize-grid-lines actual-dedented) "\n")])
+    (unless (string=? expected-norm actual-norm)
+      (define diff (grid-diff-message expected-norm actual-norm))
+      (with-check-info (['message message] ['diff diff]) (fail-check (format "~n~a" diff))))))
 
 (define (check-grid-equal? actual-str expected-str [message "grid did not match"])
   (check-grid-equal?/helper actual-str expected-str message))

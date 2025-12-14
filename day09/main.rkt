@@ -51,11 +51,10 @@
     (and (= cross 0) (<= (min xi xj) x (max xi xj)) (<= (min yi yj) y (max yi yj)))))
 
 (define (point-inside? point vertices-vec)
-  (let* ([x (pt-x point)]
-         [y (pt-y point)]
-         [n (vector-length vertices-vec)]
-         [vx (λ (i) (pt-x (vector-ref vertices-vec i)))]
-         [vy (λ (i) (pt-y (vector-ref vertices-vec i)))])
+  (match-let* ([(pt x y) point]
+               [n (vector-length vertices-vec)]
+               [vx (λ (i) (pt-x (vector-ref vertices-vec i)))]
+               [vy (λ (i) (pt-y (vector-ref vertices-vec i)))])
     (define on-boundary?
       (for/or ([i (in-range n)])
         (define j (modulo (add1 i) n))
@@ -113,12 +112,8 @@
               (loop lo mid))))))
 
 (define (h/v-intersection? h v)
-  (let* ([y (h-edge-y h)]
-         [x1 (h-edge-x1 h)]
-         [x2 (h-edge-x2 h)]
-         [x (v-edge-x v)]
-         [y1 (v-edge-y1 v)]
-         [y2 (v-edge-y2 v)])
+  (match-let* ([(h-edge y x1 x2) h]
+               [(v-edge x y1 y2) v])
     (and (> x x1) (< x x2) (> y y1) (< y y2))))
 
 (define (horizontal-rect-edge-ok? h vedge xa xb)
@@ -148,37 +143,33 @@
            [else (loop (add1 i))]))])))
 
 (define (part2 vertices-array)
-  (define verts (vertices->point-vector vertices-array))
-  (define sorted-pairs (sorted-pairs-by-area vertices-array))
-  (define inside?
-    (let ([memo (make-hash)])
-      (λ (p)
-        (define key (cons (pt-x p) (pt-y p)))
-        (hash-ref! memo key (λ () (point-inside? p verts))))))
-  (define-values (h-edges v-edges) (vertices->sorted-hv-edges verts))
-  (define (valid-pair? pair)
-    (let* ([p1 (vector-ref verts (pair-dist-i pair))]
-           [p2 (vector-ref verts (pair-dist-j pair))]
-           [x1 (pt-x p1)]
-           [y1 (pt-y p1)]
-           [x2 (pt-x p2)]
-           [y2 (pt-y p2)]
-           [xa (min x1 x2)]
-           [xb (max x1 x2)]
-           [ya (min y1 y2)]
-           [yb (max y1 y2)]
-           [corners (list (pt x1 y2) (pt x2 y1))]
-           [rect-h (list (h-edge ya xa xb) (h-edge yb xa xb))]
-           [rect-v (list (v-edge xa ya yb) (v-edge xb ya yb))])
-      (and (for/and ([c (in-list corners)])
-             (inside? c))
-           (for/and ([h (in-list rect-h)])
-             (horizontal-rect-edge-ok? h v-edges xa xb))
-           (for/and ([v (in-list rect-v)])
-             (vertical-rect-edge-ok? v h-edges ya yb)))))
-  (for/first ([p (in-list sorted-pairs)]
-              #:when (valid-pair? p))
-    (pair-dist-dist p)))
+  (let* ([verts (vertices->point-vector vertices-array)]
+         [sorted-pairs (sorted-pairs-by-area vertices-array)]
+         [inside? (let ([memo (make-hash)])
+                    (λ (p)
+                      (define key (cons (pt-x p) (pt-y p)))
+                      (hash-ref! memo key (λ () (point-inside? p verts)))))])
+    (define-values (h-edges v-edges) (vertices->sorted-hv-edges verts))
+    (define (valid-pair? pair)
+      (match-let* ([(pair-dist _dist i j) pair]
+                   [(pt x1 y1) (vector-ref verts i)]
+                   [(pt x2 y2) (vector-ref verts j)]
+                   [xa (min x1 x2)]
+                   [xb (max x1 x2)]
+                   [ya (min y1 y2)]
+                   [yb (max y1 y2)]
+                   [corners (list (pt x1 y2) (pt x2 y1))]
+                   [rect-h (list (h-edge ya xa xb) (h-edge yb xa xb))]
+                   [rect-v (list (v-edge xa ya yb) (v-edge xb ya yb))])
+        (and (for/and ([c (in-list corners)])
+               (inside? c))
+             (for/and ([h (in-list rect-h)])
+               (horizontal-rect-edge-ok? h v-edges xa xb))
+             (for/and ([v (in-list rect-v)])
+               (vertical-rect-edge-ok? v h-edges ya yb)))))
+    (for/first ([p (in-list sorted-pairs)]
+                #:when (valid-pair? p))
+      (pair-dist-dist p))))
 
 (module+ test
   (require rackunit)

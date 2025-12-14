@@ -13,15 +13,14 @@
 
 (define (pairwise-euclidean-sq coords)
   ; pairwise euclidian from sklearn
-  (match-define (vector n d) (array-shape coords))
-  (define norms (array-axis-sum (array-sqr coords) 1))
-  (define G
-    (array-axis-sum (array* (array-reshape coords (vector n 1 d))
-                            (array-reshape coords (vector 1 n d)))
-                    2))
-  (define norms-col (array-reshape norms (vector n 1)))
-  (define norms-row (array-reshape norms (vector 1 n)))
-  (array+ norms-col norms-row (array-scale G -2.0)))
+  (match-let* ([(vector n d) (array-shape coords)]
+               [norms (array-axis-sum (array-sqr coords) 1)]
+               [G (array-axis-sum (array* (array-reshape coords (vector n 1 d))
+                                          (array-reshape coords (vector 1 n d)))
+                                  2)]
+               [norms-col (array-reshape norms (vector n 1))]
+               [norms-row (array-reshape norms (vector 1 n))])
+    (array+ norms-col norms-row (array-scale G -2.0))))
 
 (define (pairwise-euclidean coordinates)
   (array-sqrt (pairwise-euclidean-sq coordinates)))
@@ -29,17 +28,17 @@
 (struct pair-dist (dist i j) #:transparent)
 
 (define (unique-pairs distances)
-  (define n (vector-ref (array-shape distances) 0))
+  (match-define (vector n _) (array-shape distances))
   (for*/list ([i (in-range n)]
               [j (in-range (add1 i) n)])
     (pair-dist (array-ref distances (vector i j)) i j)))
 
 (define (all-closest-pairs coordinates)
-  (define distances (pairwise-euclidean coordinates))
-  (define pairs (unique-pairs distances))
-  (define sorted (sort pairs < #:key pair-dist-dist))
-  (for/list ([p (in-list sorted)])
-    (list (pair-dist-i p) (pair-dist-j p))))
+  (let* ([distances (pairwise-euclidean coordinates)]
+         [pairs (unique-pairs distances)]
+         [sorted (sort pairs < #:key pair-dist-dist)])
+    (for/list ([p (in-list sorted)])
+      (list (pair-dist-i p) (pair-dist-j p)))))
 
 (define (merge-touching circuits edge)
   (match-define (list i j) edge)
@@ -65,9 +64,9 @@
     (and (= (set-count (first circuits)) n-coords) pair)))
 
 (define (part2 input)
-  (let* ([n (vector-ref (array-shape input) 0)]
-         [pairs (all-closest-pairs input)]
-         [last-edge (edge-when-fully-connected pairs n)])
+  (match-let* ([(vector n _) (array-shape input)]
+               [pairs (all-closest-pairs input)]
+               [last-edge (edge-when-fully-connected pairs n)])
     (unless last-edge
       (error 'part2 "checked all pairs without fully connecting the graph"))
     (apply * (map (λ (row) (array-ref input (vector row 0))) last-edge))))
